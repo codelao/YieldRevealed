@@ -1,1 +1,5 @@
-**/*.txt
+**/__pycache__
+**/*.json
+public
+node_modules
+**/*.pytest_cache
