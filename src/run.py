@@ -1,4 +1,4 @@
-import sys, pandas as pd
+import sys, json, pandas as pd
 from pathlib import Path
 from . import __config__
 
@@ -52,7 +52,9 @@ def main() -> tuple[int, str]:
 if __name__ == "__main__":
     if len(sys.argv) == 8:
         prediction, confidence = main()
-        print(prediction, confidence)
+        print(json.dumps({"target_prediction": prediction,
+                          "confidence": confidence
+                          }))
         sys.exit(0)
     else:
         sys.exit(1)
