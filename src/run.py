@@ -7,7 +7,6 @@ _features = [
     "State",
     "Crop",
     "Year",
-    "Area",
     "Annual",
     "Monsoon",
     "PrevYearYield"
@@ -40,8 +39,7 @@ def main() -> tuple[int, str]:
            _features[2]: int(sys.argv[3]),
            _features[3]: float(sys.argv[4]),
            _features[4]: float(sys.argv[5]),
-           _features[5]: float(sys.argv[6]),
-           _features[6]: float(sys.argv[7]),
+           _features[5]: float(sys.argv[6])
     }])
 
     return predict(df)
@@ -50,7 +48,7 @@ def main() -> tuple[int, str]:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 8:
+    if len(sys.argv) == 7:
         prediction, confidence = main()
         print(json.dumps({"target_prediction": prediction,
                           "confidence": confidence
