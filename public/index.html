@@ -2,15 +2,1012 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Agricultural production classifier</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>YieldRevealed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+  :root{
+    --bg:#142817;
+    --surface:#1C3620;
+    --surface-raised:#25452C;
+    --border:#33573A;
+    --border-soft:#2A4A31;
+    --text-primary:#ECF5EC;
+    --text-secondary:#A9C7AC;
+    --text-muted:#71906F;
+    --accent:#E8B84B;
+    --accent-dim:#4A3A17;
+    --success:#7ED957;
+    --success-dim:#22391B;
+    --danger:#FF6B4A;
+    --danger-dim:#402318;
+    --neutral:#3E5C43;
+    --neutral-dim:#25402A;
+    --confidence:#4FB8D9;
+    --confidence-dim:#173241;
+    --radius-sm:8px;
+    --radius-md:14px;
+    --radius-lg:20px;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    min-height:100vh;
+  }
+
+  body{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:64px 20px 80px;
+    position:relative;
+    overflow-x:hidden;
+  }
+
+  #rain-canvas{
+    position:absolute;
+    top:0; left:0;
+    width:100%;
+    height:420px;
+    pointer-events:none;
+    opacity:0.7;
+    mask-image:linear-gradient(to bottom, black 0%, transparent 100%);
+    -webkit-mask-image:linear-gradient(to bottom, black 0%, transparent 100%);
+  }
+
+  header{
+    position:relative;
+    z-index:1;
+    text-align:center;
+    max-width:640px;
+    margin-bottom:44px;
+  }
+
+  h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(28px, 4vw, 38px);
+    letter-spacing:-0.01em;
+    margin:0 0 12px;
+    color:var(--text-primary);
+  }
+
+  header p{
+    font-size:15px;
+    line-height:1.6;
+    color:var(--text-secondary);
+    margin:0;
+  }
+
+  .flip-scene{
+    position:relative;
+    z-index:1;
+    width:100%;
+    max-width:560px;
+    perspective:1800px;
+  }
+
+  .flip-card{
+    position:relative;
+    width:100%;
+    transform-style:preserve-3d;
+    transition:transform 0.9s cubic-bezier(0.65,0,0.35,1);
+  }
+
+  .flip-card.flipped{
+    transform:rotateY(180deg);
+  }
+
+  .flip-face{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:36px 36px 32px;
+    -webkit-backface-visibility:hidden;
+    backface-visibility:hidden;
+  }
+
+  .flip-front{
+    position:relative;
+    transform:rotateY(0deg);
+  }
+
+  .flip-back{
+    position:absolute;
+    inset:0;
+    transform:rotateY(180deg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .flip-card:not(.flipped) .flip-back{ pointer-events:none; }
+  .flip-card.flipped .flip-front{ pointer-events:none; }
+
+  #front-fields{
+    transition:opacity 0.3s ease;
+  }
+
+  #front-fields.processing{
+    opacity:0;
+    pointer-events:none;
+  }
+
+  .back-content{
+    width:100%;
+    max-width:400px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    opacity:0;
+    transition:opacity 0.4s ease;
+  }
+
+  .flip-card.flipped .back-content{
+    opacity:1;
+    transition:opacity 0.5s ease 0.45s;
+  }
+
+  .field{
+    margin-bottom:30px;
+  }
+
+  .field:last-of-type{
+    margin-bottom:0;
+  }
+
+  .field-label{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+
+  .field-label span.name{
+    font-size:12px;
+    font-weight:500;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-secondary);
+  }
+
+  .field-label span.value{
+    font-family:var(--font-mono);
+    font-size:14px;
+    color:var(--accent);
+  }
+
+  select{
+    width:100%;
+    appearance:none;
+    -webkit-appearance:none;
+    background:var(--surface-raised) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%23A9C7AC' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 16px center;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    font-size:15px;
+    padding:13px 40px 13px 16px;
+    cursor:pointer;
+    transition:border-color 0.15s ease;
+  }
+
+  select:hover{ border-color:var(--border-soft); }
+  select:focus{ outline:none; border-color:var(--accent); }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:4px;
+    border-radius:2px;
+    background:linear-gradient(to right, var(--accent) 0%, var(--accent) var(--fill, 50%), var(--neutral-dim) var(--fill, 50%), var(--neutral-dim) 100%);
+    outline:none;
+    margin:6px 0;
+  }
+
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    background:var(--bg);
+    border:2px solid var(--accent);
+    cursor:pointer;
+    transition:transform 0.12s ease;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover{ transform:scale(1.15); }
+
+  input[type="range"]::-moz-range-thumb{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:var(--bg);
+    border:2px solid var(--accent);
+    cursor:pointer;
+  }
+
+  input[type="range"]::-moz-range-track{
+    height:4px;
+    border-radius:2px;
+    background:transparent;
+  }
+
+  input[type="range"]:disabled{
+    opacity:0.35;
+    cursor:not-allowed;
+  }
+
+  input[type="range"]:disabled::-webkit-slider-thumb{ cursor:not-allowed; }
+
+  .tick-row{
+    display:flex;
+    justify-content:space-between;
+    margin-top:6px;
+  }
+
+  .tick-row span{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+  }
+
+  .year-controls{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+
+  .year-controls input[type="range"]{ flex:1; }
+
+  .checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin-top:14px;
+  }
+
+  .checkbox-row input[type="checkbox"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:17px;
+    height:17px;
+    border-radius:5px;
+    border:1.5px solid var(--border-soft);
+    background:var(--surface-raised);
+    cursor:pointer;
+    position:relative;
+    flex-shrink:0;
+    transition:border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .checkbox-row input[type="checkbox"]:checked{
+    background:var(--accent);
+    border-color:var(--accent);
+  }
+
+  .checkbox-row input[type="checkbox"]:checked::after{
+    content:"";
+    position:absolute;
+    left:5px; top:1.5px;
+    width:4px; height:8px;
+    border:solid var(--bg);
+    border-width:0 1.5px 1.5px 0;
+    transform:rotate(45deg);
+  }
+
+  .checkbox-row label{
+    font-size:13.5px;
+    color:var(--text-secondary);
+    cursor:pointer;
+    user-select:none;
+  }
+
+  .rainfall-input-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+
+  .rainfall-input-row input[type="range"]{ flex:1; }
+
+  .num-input-wrap{
+    display:flex;
+    align-items:center;
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:0 10px;
+    flex-shrink:0;
+    transition:border-color 0.15s ease;
+  }
+
+  .num-input-wrap:focus-within{ border-color:var(--accent); }
+
+  .num-input-wrap input[type="number"]{
+    -moz-appearance:textfield;
+    appearance:textfield;
+    width:58px;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:var(--text-primary);
+    font-family:var(--font-mono);
+    font-size:14px;
+    padding:10px 0;
+    text-align:right;
+  }
+
+  .num-input-wrap input[type="number"]::-webkit-outer-spin-button,
+  .num-input-wrap input[type="number"]::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+
+  .num-input-wrap span{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+    margin-left:5px;
+  }
+
+  .predict-btn{
+    width:100%;
+    margin-top:8px;
+    padding:16px;
+    border-radius:var(--radius-sm);
+    background:var(--surface-raised);
+    border:1.5px solid var(--neutral);
+    color:var(--text-secondary);
+    font-family:var(--font-display);
+    font-weight:500;
+    font-size:15px;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    transition:border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
+  }
+
+  .predict-btn:hover:not(:disabled){ background: var(--surface); }
+
+  .predict-btn:disabled{
+    cursor:not-allowed;
+    opacity:0.55;
+  }
+
+  .predict-btn.state-modified{
+    border-color:var(--accent);
+    color:var(--text-primary);
+  }
+
+  .predict-btn.state-success{
+    border-color:var(--success);
+    color:var(--success);
+  }
+
+  .predict-btn.state-danger{
+    border-color:var(--danger);
+    color:var(--danger);
+  }
+
+  .progress-track{
+    width:100%;
+    height:3px;
+    border-radius:2px;
+    background:var(--neutral-dim);
+    margin-top:14px;
+    overflow:hidden;
+    display:none;
+  }
+
+  .progress-track.visible{ display:block; }
+
+  .progress-fill{
+    height:100%;
+    width:0%;
+    background:var(--accent);
+    border-radius:2px;
+    transition:width 0.18s linear;
+  }
+
+  .result-box{
+    padding:14px 16px;
+    border-radius:var(--radius-sm);
+    font-size:14px;
+    font-weight:500;
+    line-height:1.5;
+    border:1px solid transparent;
+    text-align: center;
+  }
+
+  .result-box.success{
+    background:var(--success-dim);
+    border-color:var(--success);
+    color:var(--success);
+  }
+
+  .result-box.danger{
+    background:var(--danger-dim);
+    border-color:var(--danger);
+    color:var(--danger);
+  }
+
+  .confidence-box{
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    background:var(--confidence-dim);
+    border:1px solid var(--confidence);
+    color:var(--confidence);
+    font-family:var(--font-mono);
+    font-size:13.5px;
+    text-align: center;
+  }
+
+  .error-box{
+    display:none;
+    margin-top:12px;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    background:var(--danger-dim);
+    border:1px solid var(--danger);
+    color:var(--danger);
+    font-size:13.5px;
+    line-height:1.5;
+  }
+
+  footer{
+    position:relative;
+    z-index:1;
+    margin-top:28px;
+    font-size:12px;
+    color:var(--text-muted);
+    text-align:center;
+    max-width:480px;
+    line-height:1.6;
+  }
+
+  @media (max-width:480px){
+    .flip-face{ padding:28px 22px 26px; }
+    .rainfall-input-row, .year-controls{ flex-direction:column; align-items:stretch; }
+    .num-input-wrap{ align-self:flex-end; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
 </head>
 <body>
+
+<canvas id="rain-canvas" aria-hidden="true"></canvas>
 
 <header>
   <h1>Agricultural production forecast</h1>
   <p>Forecasts agricultural production standing based on historical rainfall levels</p>
 </header>
 
+<div class="flip-scene">
+  <div class="flip-card" id="flip-card">
+    <div class="flip-face flip-front">
+
+      <div id="front-fields">
+
+      <div class="field">
+        <div class="field-label">
+          <span class="name">Crop</span>
+        </div>
+        <select id="crop-select">
+          <option value="Arecanut">Arecanut</option>
+      <option value="Arhar/Tur">Arhar/Tur</option>
+      <option value="Bajra">Bajra</option>
+      <option value="Banana">Banana</option>
+      <option value="Barley">Barley</option>
+      <option value="Black pepper">Black pepper</option>
+      <option value="Cardamom">Cardamom</option>
+      <option value="Cashewnut">Cashewnut</option>
+      <option value="Castor seed">Castor seed</option>
+      <option value="Coriander">Coriander</option>
+      <option value="Cowpea(Lobia)">Cowpea(Lobia)</option>
+      <option value="Dry chillies">Dry chillies</option>
+      <option value="Garlic">Garlic</option>
+      <option value="Ginger">Ginger</option>
+      <option value="Gram">Gram</option>
+      <option value="Groundnut">Groundnut</option>
+      <option value="Guar seed">Guar seed</option>
+      <option value="Horse-gram">Horse-gram</option>
+      <option value="Jowar">Jowar</option>
+      <option value="Khesari">Khesari</option>
+      <option value="Linseed">Linseed</option>
+      <option value="Maize">Maize</option>
+      <option value="Masoor">Masoor</option>
+      <option value="Moong(Green Gram)">Moong(Green Gram)</option>
+      <option value="Moth">Moth</option>
+      <option value="Niger seed">Niger seed</option>
+      <option value="Onion">Onion</option>
+      <option value="Other Cereals">Other Cereals</option>
+      <option value="Other Kharif pulses">Other Kharif pulses</option>
+      <option value="Other Oilseeds">Other Oilseeds</option>
+      <option value="Other Rabi pulses">Other Rabi pulses</option>
+      <option value="Peas &amp; beans (Pulses)">Peas &amp; beans (Pulses)</option>
+      <option value="Potato">Potato</option>
+      <option value="Ragi">Ragi</option>
+      <option value="Rapeseed &amp;Mustard">Rapeseed &amp;Mustard</option>
+      <option value="Rice">Rice</option>
+      <option value="Safflower">Safflower</option>
+      <option value="Sannhamp">Sannhamp</option>
+      <option value="Sesamum">Sesamum</option>
+      <option value="Small millets">Small millets</option>
+      <option value="Soyabean">Soyabean</option>
+      <option value="Sugarcane">Sugarcane</option>
+      <option value="Sunflower">Sunflower</option>
+      <option value="Sweet potato">Sweet potato</option>
+      <option value="Tapioca">Tapioca</option>
+      <option value="Tobacco">Tobacco</option>
+      <option value="Turmeric">Turmeric</option>
+      <option value="Urad">Urad</option>
+      <option value="Wheat">Wheat</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <div class="field-label">
+      <span class="name">State</span>
+    </div>
+    <select id="state-select">
+      <option value="any">Any</option>
+      <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+      <option value="Andhra Pradesh">Andhra Pradesh</option>
+      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+      <option value="Assam">Assam</option>
+      <option value="Bihar">Bihar</option>
+      <option value="Chandigarh">Chandigarh</option>
+      <option value="Chhattisgarh">Chhattisgarh</option>
+      <option value="Delhi">Delhi</option>
+      <option value="Goa">Goa</option>
+      <option value="Gujarat">Gujarat</option>
+      <option value="Haryana">Haryana</option>
+      <option value="Himachal Pradesh">Himachal Pradesh</option>
+      <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+      <option value="Jharkhand">Jharkhand</option>
+      <option value="Karnataka">Karnataka</option>
+      <option value="Kerala">Kerala</option>
+      <option value="Madhya Pradesh">Madhya Pradesh</option>
+      <option value="Maharashtra">Maharashtra</option>
+      <option value="Manipur">Manipur</option>
+      <option value="Meghalaya">Meghalaya</option>
+      <option value="Mizoram">Mizoram</option>
+      <option value="Nagaland">Nagaland</option>
+      <option value="Odisha">Odisha</option>
+      <option value="Puducherry">Puducherry</option>
+      <option value="Punjab">Punjab</option>
+      <option value="Rajasthan">Rajasthan</option>
+      <option value="Sikkim">Sikkim</option>
+      <option value="Tamil Nadu">Tamil Nadu</option>
+      <option value="Telangana">Telangana</option>
+      <option value="Tripura">Tripura</option>
+      <option value="Uttar Pradesh">Uttar Pradesh</option>
+      <option value="Uttarakhand">Uttarakhand</option>
+      <option value="West Bengal">West Bengal</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <div class="field-label">
+      <span class="name">Year</span>
+      <span class="value" id="year-value">1998</span>
+    </div>
+    <div class="year-controls">
+      <input type="range" id="year-slider" min="1998" max="2026" step="1" value="1998" />
+    </div>
+    <div class="tick-row">
+      <span>1998</span>
+      <span id="year-max-label">2026</span>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="current-year-check" />
+      <label for="current-year-check">Use current year</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label">
+      <span class="name">Previous year yield</span>
+      <span class="value" id="yield-value">0.00 t/ha</span>
+    </div>
+    <div class="year-controls">
+      <input type="range" id="yield-slider" min="0" max="1000" step="1" value="0" />
+    </div>
+    <div class="tick-row">
+      <span>0 t/ha</span>
+      <span>500 t/ha</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label">
+      <span class="name">Annual rainfall</span>
+    </div>
+    <div class="rainfall-input-row">
+      <input type="range" id="annual-slider" min="200" max="3000" step="10" value="200" />
+      <div class="num-input-wrap">
+        <input type="number" id="annual-number" min="200" max="3000" step="10" value="200" />
+        <span>mm</span>
+      </div>
+    </div>
+    <div class="tick-row">
+      <span>200 mm</span>
+      <span>3000 mm</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="field-label">
+      <span class="name">Monsoon rainfall</span>
+    </div>
+    <div class="rainfall-input-row">
+      <input type="range" id="monsoon-slider" min="200" max="2500" step="10" value="200" />
+      <div class="num-input-wrap">
+        <input type="number" id="monsoon-number" min="200" max="2500" step="10" value="200" />
+        <span>mm</span>
+      </div>
+    </div>
+    <div class="tick-row">
+      <span>200 mm</span>
+      <span>2500 mm</span>
+    </div>
+  </div>
+
+      </div>
+
+      <button class="predict-btn" id="predict-btn" disabled>Get prediction</button>
+
+      <div class="progress-track" id="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+
+      <div class="error-box" id="error-box"></div>
+
+    </div>
+
+    <div class="flip-face flip-back">
+      <div class="back-content">
+        <div class="result-box" id="result-box"></div>
+        <div class="confidence-box" id="confidence-box"></div>
+        <button class="predict-btn state-modified" id="go-back-btn">Go back</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  by CodeLao<br><a href="https://github.com/codelao/YieldRevealed">GitHub</a>
+</footer>
+
+<script>
+
+  var cropSelect = document.getElementById('crop-select');
+  var stateSelect = document.getElementById('state-select');
+  var yearSlider = document.getElementById('year-slider');
+  var yearValue = document.getElementById('year-value');
+  var yearMaxLabel = document.getElementById('year-max-label');
+  var currentYearCheck = document.getElementById('current-year-check');
+  var yieldSlider = document.getElementById('yield-slider');
+  var yieldValue = document.getElementById('yield-value');
+  var annualSlider = document.getElementById('annual-slider');
+  var annualNumber = document.getElementById('annual-number');
+  var monsoonSlider = document.getElementById('monsoon-slider');
+  var monsoonNumber = document.getElementById('monsoon-number');
+  var predictBtn = document.getElementById('predict-btn');
+  var goBackBtn = document.getElementById('go-back-btn');
+  var flipCard = document.getElementById('flip-card');
+  var frontFields = document.getElementById('front-fields');
+  var progressTrack = document.getElementById('progress-track');
+  var progressFill = document.getElementById('progress-fill');
+  var resultBox = document.getElementById('result-box');
+  var confidenceBox = document.getElementById('confidence-box');
+  var errorBox = document.getElementById('error-box');
+
+  function updateSliderFill(slider){
+    var min = parseFloat(slider.min);
+    var max = parseFloat(slider.max);
+    var val = parseFloat(slider.value);
+    var pct = ((val - min) / (max - min)) * 100;
+    slider.style.setProperty('--fill', pct + '%');
+  }
+
+  var currentYearForMax = new Date().getFullYear();
+  yearSlider.max = currentYearForMax;
+  yearMaxLabel.textContent = currentYearForMax;
+  if (parseInt(yearSlider.value, 10) > currentYearForMax){
+    yearSlider.value = currentYearForMax;
+    yearValue.textContent = currentYearForMax;
+  }
+
+  function yieldFromSlider(rawValue){
+    var t = rawValue / 1000;
+    return 500 * Math.pow(t, 3);
+  }
+
+  function formatYield(y){
+    if (y < 10) return y.toFixed(2);
+    if (y < 100) return y.toFixed(1);
+    return y.toFixed(0);
+  }
+
+  [yearSlider, annualSlider, monsoonSlider, yieldSlider].forEach(updateSliderFill);
+  yieldValue.textContent = formatYield(yieldFromSlider(parseFloat(yieldSlider.value))) + ' t/ha';
+
+  yieldSlider.addEventListener('input', function(){
+    yieldValue.textContent = formatYield(yieldFromSlider(parseFloat(yieldSlider.value))) + ' t/ha';
+    updateSliderFill(yieldSlider);
+    markModified();
+  });
+
+  function markModified(){
+    predictBtn.classList.remove('state-success', 'state-danger');
+    predictBtn.classList.add('state-modified');
+    predictBtn.textContent = 'Get prediction';
+    predictBtn.disabled = false;
+    errorBox.style.display = 'none';
+  }
+
+  cropSelect.addEventListener('change', markModified);
+  stateSelect.addEventListener('change', markModified);
+
+  yearSlider.addEventListener('input', function(){
+    yearValue.textContent = yearSlider.value;
+    updateSliderFill(yearSlider);
+    markModified();
+  });
+
+  currentYearCheck.addEventListener('change', function(){
+    if (currentYearCheck.checked){
+      var actualYear = new Date().getFullYear();
+      yearSlider.disabled = true;
+      yearValue.textContent = actualYear;
+    } else {
+      yearSlider.disabled = false;
+      yearValue.textContent = yearSlider.value;
+    }
+    markModified();
+  });
+
+  function syncRainfall(slider, numberInput) {
+    var min = parseFloat(slider.min);
+    var max = parseFloat(slider.max);
+    var step = parseFloat(slider.step);
+    function normalizeValue(value) {
+      if (isNaN(value)) {
+        return parseFloat(slider.value);
+      }
+
+      value = Math.max(min, Math.min(max, value));
+      value = Math.round((value - min) / step) * step + min;
+      value = Math.max(min, Math.min(max, value));
+
+      return value;
+    }
+
+    slider.addEventListener('input', function() {
+      numberInput.value = slider.value;
+      updateSliderFill(slider);
+      markModified();
+    });
+
+    numberInput.addEventListener('input', function() {
+      if (numberInput.value === '') {
+        return;
+      }
+
+      var value = parseFloat(numberInput.value);
+
+      if (isNaN(value)) {
+        return;
+      }
+
+      value = normalizeValue(value);
+
+      slider.value = value;
+      numberInput.value = value;
+
+      updateSliderFill(slider);
+      markModified();
+    });
+
+    numberInput.addEventListener('blur', function() {
+      var value = parseFloat(numberInput.value);
+
+      if (isNaN(value)) {
+        numberInput.value = slider.value;
+        return;
+      }
+
+      value = normalizeValue(value);
+
+      slider.value = value;
+      numberInput.value = value;
+
+      updateSliderFill(slider);
+    });
+
+    numberInput.value = slider.value;
+    updateSliderFill(slider);
+  }
+
+  syncRainfall(annualSlider, annualNumber);
+  syncRainfall(monsoonSlider, monsoonNumber);
+
+  function startProgress(){
+    progressFill.style.width = '0%';
+    var pct = 0;
+    return setInterval(function(){
+      pct += (92 - pct) * 0.12 + 0.3;
+      if (pct > 92) pct = 92;
+      progressFill.style.width = pct + '%';
+    }, 90);
+  }
+
+  function showResult(data){
+    setTimeout(function(){
+      progressTrack.classList.remove('visible');
+
+      if (data.target_prediction === 1){
+        resultBox.className = 'result-box success';
+        resultBox.innerHTML = '<strong>High production forecasted</strong><br>This year\'s yield has a chance to be higher than historical mean for this crop.';
+      } else {
+        resultBox.className = 'result-box danger';
+        resultBox.innerHTML = '<strong>Low production forecasted</strong><br>This year\'s yield has a chance to be lower than historical mean for this crop.';
+      }
+      confidenceBox.textContent = 'Confidence: ' + data.confidence;
+
+      flipCard.classList.add('flipped');
+
+    }, 250);
+  }
+
+  function showError(message){
+    progressTrack.classList.remove('visible');
+    frontFields.classList.remove('processing');
+    predictBtn.disabled = false;
+    predictBtn.classList.add('state-modified');
+    errorBox.textContent = message;
+    errorBox.style.display = 'block';
+  }
+
+  predictBtn.addEventListener('click', function(){
+    if (predictBtn.disabled) return;
+
+    errorBox.style.display = 'none';
+    predictBtn.disabled = true;
+    frontFields.classList.add('processing');
+    progressTrack.classList.add('visible');
+
+    var payload = {
+      crop: cropSelect.value,
+      state: stateSelect.value,
+      year: currentYearCheck.checked ? new Date().getFullYear() : parseInt(yearSlider.value, 10),
+      annualRainfall: parseFloat(annualNumber.value),
+      monsoonRainfall: parseFloat(monsoonNumber.value),
+      previousYearYield: yieldFromSlider(parseFloat(yieldSlider.value))
+    };
+
+    var progressTimer = startProgress();
+
+    fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(res){
+        if (!res.ok){
+          return res.json().catch(function(){ return {}; }).then(function(body){
+            throw new Error(body.error || ('Request failed with status ' + res.status));
+          });
+        }
+        return res.json();
+      })
+      .then(function(data){
+        clearInterval(progressTimer);
+        progressFill.style.width = '100%';
+        showResult(data);
+      })
+      .catch(function(err){
+        clearInterval(progressTimer);
+        showError(err.message || 'Something went wrong while running the prediction.');
+      });
+  });
+
+  goBackBtn.addEventListener('click', function(){
+    flipCard.classList.remove('flipped');
+
+    predictBtn.disabled = true;
+    predictBtn.classList.remove('state-modified', 'state-success', 'state-danger');
+    predictBtn.textContent = 'Get prediction';
+    progressTrack.classList.remove('visible');
+    progressFill.style.width = '0%';
+
+    setTimeout(function(){
+      frontFields.classList.remove('processing');
+    }, 450);
+  });
+
+  (function(){
+    var canvas = document.getElementById('rain-canvas');
+    var ctx = canvas.getContext('2d');
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var drops = [];
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    function resize(){
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+    }
+
+    function makeDrops(){
+      drops = [];
+      var count = Math.floor((canvas.width / dpr) / 9);
+      for (var i = 0; i < count; i++){
+        drops.push({
+          x: Math.random() * (canvas.width / dpr),
+          y: Math.random() * (canvas.height / dpr),
+          len: 16 + Math.random() * 30,
+          speed: 2.2 + Math.random() * 3.4,
+          opacity: 0.08 + Math.random() * 0.22
+        });
+      }
+    }
+
+    resize();
+    makeDrops();
+    window.addEventListener('resize', function(){ resize(); makeDrops(); });
+
+    if (reduceMotion){
+      ctx.strokeStyle = 'rgba(79,184,217,0.08)';
+      ctx.lineWidth = 1;
+      drops.forEach(function(d){
+        ctx.beginPath();
+        ctx.moveTo(d.x * dpr, d.y * dpr);
+        ctx.lineTo(d.x * dpr, (d.y + d.len) * dpr);
+        ctx.stroke();
+      });
+      return;
+    }
+
+    function frame(){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      var h = canvas.height / dpr;
+      drops.forEach(function(d){
+        ctx.strokeStyle = 'rgba(79,184,217,' + d.opacity + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(d.x * dpr, d.y * dpr);
+        ctx.lineTo(d.x * dpr, (d.y + d.len) * dpr);
+        ctx.stroke();
+        d.y += d.speed;
+        if (d.y > h){
+          d.y = -d.len;
+          d.x = Math.random() * (canvas.width / dpr);
+        }
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+</script>
 
 </body>
 </html>
