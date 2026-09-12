@@ -1,0 +1,25 @@
+{
+  "name": "YieldRevealed",
+  "version": "0.9.0-beta",
+  "description": "Forecasts agricultural production standing based on historical rainfall levels",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codelao/YieldRevealed.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/codelao/YieldRevealed/issues"
+  },
+  "homepage": "https://github.com/codelao/YieldRevealed#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

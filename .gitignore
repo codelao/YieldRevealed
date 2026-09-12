@@ -1,5 +1,6 @@
 **/__pycache__
-**/*.json
+**/*.pytest_cache
+
+
 public/test.html
 node_modules
-**/*.pytest_cache
