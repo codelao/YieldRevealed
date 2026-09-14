@@ -25,6 +25,7 @@ app.post("/api/predict", (req, res) => {
 
   const args = ["-m", "src.run", state, crop, String(year), String(annualRainfall), String(monsoonRainfall), String(previousYearYield)];
   const child = spawn(PYTHON_BIN, args, { cwd: __dirname });
+  //console.debug("Starting", PYTHON_BIN, "with", args)
 
   let stdout = "";
   let stderr = "";

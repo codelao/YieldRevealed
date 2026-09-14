@@ -34,7 +34,7 @@ def predict(df: pd.DataFrame) -> tuple[int, str]:
     return 0, confidence
 
 def main() -> tuple[int, str]:
-    df = pd.DataFrame([{_features[0]: sys.argv[1],
+    df = pd.DataFrame([{_features[0]: sys.argv[1].lower(),
            _features[1]: sys.argv[2],
            _features[2]: int(sys.argv[3]),
            _features[3]: float(sys.argv[4]),
