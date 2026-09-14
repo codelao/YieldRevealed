@@ -175,7 +175,7 @@
     margin-bottom:12px;
   }
 
-  .field-label span.name{
+  .field-label .name{
     font-size:12px;
     font-weight:500;
     letter-spacing:0.08em;
@@ -206,6 +206,7 @@
 
   select:hover{ border-color:var(--border-soft); }
   select:focus{ outline:none; border-color:var(--accent); }
+  .field-label .name{ cursor:default; }
 
   input[type="range"]{
     -webkit-appearance:none;
@@ -337,7 +338,7 @@
 
   .num-input-wrap:focus-within{ border-color:var(--accent); }
 
-  .num-input-wrap input[type="number"]{
+  .num-input-wrap input[type="text"]{
     -moz-appearance:textfield;
     appearance:textfield;
     width:58px;
@@ -349,12 +350,6 @@
     font-size:14px;
     padding:10px 0;
     text-align:right;
-  }
-
-  .num-input-wrap input[type="number"]::-webkit-outer-spin-button,
-  .num-input-wrap input[type="number"]::-webkit-inner-spin-button{
-    -webkit-appearance:none;
-    margin:0;
   }
 
   .num-input-wrap span{
@@ -506,7 +501,7 @@
 
       <div class="field">
         <div class="field-label">
-          <span class="name">Crop</span>
+          <label class="name" for="crop-select">Crop</label>
         </div>
         <select id="crop-select">
           <option value="Arecanut">Arecanut</option>
@@ -563,7 +558,7 @@
 
   <div class="field">
     <div class="field-label">
-      <span class="name">State</span>
+      <label class="name" for="state-select">State</label>
     </div>
     <select id="state-select">
       <option value="any">Any</option>
@@ -605,7 +600,7 @@
 
   <div class="field">
     <div class="field-label">
-      <span class="name">Year</span>
+      <label class="name" for="year-slider">Year</label>
       <span class="value" id="year-value">1998</span>
     </div>
     <div class="year-controls">
@@ -623,7 +618,7 @@
 
   <div class="field">
     <div class="field-label">
-      <span class="name">Previous year yield</span>
+      <label class="name" for="yield-slider">Previous year yield</label>
       <span class="value" id="yield-value">0.00 t/ha</span>
     </div>
     <div class="year-controls">
@@ -637,12 +632,12 @@
 
   <div class="field">
     <div class="field-label">
-      <span class="name">Annual rainfall</span>
+      <label class="name" for="annual-number">Annual rainfall</label>
     </div>
     <div class="rainfall-input-row">
-      <input type="range" id="annual-slider" min="200" max="3000" step="10" value="200" />
+      <input type="range" id="annual-slider" min="200" max="3000" step="10" value="200" aria-label="Annual rainfall slider" />
       <div class="num-input-wrap">
-        <input type="number" id="annual-number" min="200" max="3000" step="10" value="200" />
+        <input type="text" id="annual-number" inputmode="decimal" value="200" />
         <span>mm</span>
       </div>
     </div>
@@ -654,12 +649,12 @@
 
   <div class="field">
     <div class="field-label">
-      <span class="name">Monsoon rainfall</span>
+      <label class="name" for="monsoon-number">Monsoon rainfall</label>
     </div>
     <div class="rainfall-input-row">
-      <input type="range" id="monsoon-slider" min="200" max="2500" step="10" value="200" />
+      <input type="range" id="monsoon-slider" min="200" max="2500" step="10" value="200" aria-label="Monsoon rainfall slider" />
       <div class="num-input-wrap">
-        <input type="number" id="monsoon-number" min="200" max="2500" step="10" value="200" />
+        <input type="text" id="monsoon-number" inputmode="decimal" value="200" />
         <span>mm</span>
       </div>
     </div>
@@ -742,9 +737,11 @@
   }
 
   function formatYield(y){
-    if (y < 10) return y.toFixed(2);
-    if (y < 100) return y.toFixed(1);
-    return y.toFixed(0);
+    return y.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function displayedYieldValue(){
+    return parseFloat(formatYield(yieldFromSlider(parseFloat(yieldSlider.value))));
   }
 
   [yearSlider, annualSlider, monsoonSlider, yieldSlider].forEach(updateSliderFill);
@@ -789,61 +786,79 @@
     var min = parseFloat(slider.min);
     var max = parseFloat(slider.max);
     var step = parseFloat(slider.step);
-    function normalizeValue(value) {
-      if (isNaN(value)) {
-        return parseFloat(slider.value);
-      }
+    var manualValueActive = false;
 
-      value = Math.max(min, Math.min(max, value));
-      value = Math.round((value - min) / step) * step + min;
-      value = Math.max(min, Math.min(max, value));
+    function sanitizeInput(rawValue) {
+      var value = rawValue.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+      var firstDot = value.indexOf('.');
+
+      if (firstDot !== -1) {
+        value = value.slice(0, firstDot + 1) +
+          value.slice(firstDot + 1).replace(/\./g, '');
+        value = value.slice(0, firstDot + 3);
+      }
 
       return value;
     }
 
+    function normalizeOnBlur(rawValue) {
+      if (rawValue === '') {
+        manualValueActive = false;
+        return String(slider.value);
+      }
+
+      var value = parseFloat(rawValue);
+
+      if (isNaN(value)) {
+        manualValueActive = false;
+        return String(slider.value);
+      }
+
+      value = Math.max(min, Math.min(max, value));
+      manualValueActive = true;
+      return value.toFixed(2).replace(/\.?0+$/, '');
+    }
+
+    function nearestSliderValue(value) {
+      var rounded = Math.round((value - min) / step) * step + min;
+      return Math.max(min, Math.min(max, rounded));
+    }
+
     slider.addEventListener('input', function() {
+      manualValueActive = false;
       numberInput.value = slider.value;
       updateSliderFill(slider);
       markModified();
     });
 
     numberInput.addEventListener('input', function() {
-      if (numberInput.value === '') {
-        return;
+      var sanitized = sanitizeInput(numberInput.value);
+
+      if (numberInput.value !== sanitized) {
+        numberInput.value = sanitized;
       }
 
-      var value = parseFloat(numberInput.value);
-
-      if (isNaN(value)) {
-        return;
-      }
-
-      value = normalizeValue(value);
-
-      slider.value = value;
-      numberInput.value = value;
-
-      updateSliderFill(slider);
+      manualValueActive = true;
       markModified();
     });
 
     numberInput.addEventListener('blur', function() {
-      var value = parseFloat(numberInput.value);
+      var normalized = normalizeOnBlur(numberInput.value);
+      numberInput.value = normalized;
 
-      if (isNaN(value)) {
-        numberInput.value = slider.value;
-        return;
+      if (manualValueActive) {
+        var value = parseFloat(normalized);
+
+        if (!isNaN(value)) {
+          slider.value = nearestSliderValue(value);
+          updateSliderFill(slider);
+        }
       }
 
-      value = normalizeValue(value);
-
-      slider.value = value;
-      numberInput.value = value;
-
-      updateSliderFill(slider);
+      markModified();
     });
 
-    numberInput.value = slider.value;
+    numberInput.value = String(slider.value);
     updateSliderFill(slider);
   }
 
@@ -901,7 +916,7 @@
       year: currentYearCheck.checked ? new Date().getFullYear() : parseInt(yearSlider.value, 10),
       annualRainfall: parseFloat(annualNumber.value),
       monsoonRainfall: parseFloat(monsoonNumber.value),
-      previousYearYield: yieldFromSlider(parseFloat(yieldSlider.value))
+      previousYearYield: displayedYieldValue()
     };
 
     var progressTimer = startProgress();
