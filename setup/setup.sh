@@ -2,8 +2,8 @@
 
 set -eu
 
-LINUX_INSTALL_DIR="$HOME/.local/share"
-MACOS_INSTALL_DIR="$HOME/Applications"
+LINUX_INSTALL_DIR="$HOME/.local/share/YieldRevealed"
+MACOS_INSTALL_DIR="$HOME/Applications/YieldRevealed"
 
 
 banner() {                                              
@@ -12,7 +12,7 @@ banner() {
     printf "|_   _| | -_| | . |    -| -_| | | -_| .'| | -_| . |  \n"
     printf "  |_| |_|___|_|___|__|__|___|\_/|___|__,|_|___|___|  \n"
     printf "                     by CodeLao                      \n"
-    printf "                  ~~~ Installer ~~~                  \n"  
+    printf "                  ~~~ Installer ~~~                  \n\n\n"  
 }
 
 error() {
@@ -23,6 +23,18 @@ error() {
 info() {
     printf "\033[33m[INFO]\033[0m %s\n" "$1"
 }
+
+success() {
+    printf "\033[32m[SUCCESS]\033[0m\n"
+    printf "Application installed to $INSTALL_DIR\n\n"
+    printf "To start, run \033[34mYieldRevealed\033[0m\n"
+    exit 0
+}
+
+
+if [ "$EUID" -eq 0 ]; then
+    error "Installation must not be run as root."
+fi
 
 
 OS="$(uname -s)"
@@ -57,17 +69,17 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 
-if [ -e "$INSTALL_DIR/YieldRevealed" ]; then
-    error "Installation directory already exists."
+if [ -e "$INSTALL_DIR" ]; then
+    error "Installation directory already exists. You may run unins.sh from github.com/codelao/YieldRevealed/releases in order to uninstall the app."
 fi
+
+info "Successfully verified all dependencies."
 
 
 info "Cloning project repository..."
 
-git clone https://github.com/codelao/YieldRevealed.git $INSTALL_DIR
-
-
-cd "$INSTALL_DIR/YieldRevealed"
+git clone https://github.com/codelao/YieldRevealed.git "$INSTALL_DIR"
+cd "$INSTALL_DIR"
 
 
 info "Removing unnecessary files..."
@@ -100,12 +112,12 @@ npm ci
 
 info "Installing launcher..."
 
-sudo install -m 755 "$INSTALL_DIR/YieldRevealed/bin/YieldRevealed.sh" /usr/local/bin/YieldRevealed
+touch YieldRevealed.sh
+echo -e "#!/usr/bin/env bash\n\nAppDir=\"$INSTALL_DIR\"\ncd \"\$AppDir\"\nexec node server.js" > YieldRevealed.sh
+if ! sudo install -m 755 "$INSTALL_DIR/YieldRevealed.sh" /usr/local/bin/YieldRevealed; then
+    error "Unable to install the launcher. Please, check your system rights and try installation again."
+fi
+rm -f YieldRevealed.sh
 
 
-printf "\n\n\033[32mInstallation successful.\n"
-printf "Application installed to: $INSTALL_DIR\n\n"
-printf "To start the application, run \033[34mYieldRevealed\033[0m\n"
-
-
-exit 0
+success
